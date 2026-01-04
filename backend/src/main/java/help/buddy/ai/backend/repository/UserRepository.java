@@ -1,0 +1,8 @@
+package help.buddy.ai.backend.repository;
+
+import help.buddy.ai.backend.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    boolean existsByEmail(String email);
+}
