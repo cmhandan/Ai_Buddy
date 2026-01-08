@@ -25,4 +25,10 @@ public class Security {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+    
+    public boolean verifyPassword(String plainPassword, String hashedPassword) {
+        boolean verified = passwordEncoder().matches(plainPassword, hashedPassword);
+        System.out.println("Hashed password: " + hashedPassword + " plainPassword: " + plainPassword + " verified: " + verified);
+        return verified;
+    }
 }
