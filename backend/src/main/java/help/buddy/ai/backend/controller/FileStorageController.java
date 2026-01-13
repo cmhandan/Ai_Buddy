@@ -1,45 +1,43 @@
 package help.buddy.ai.backend.controller;
-
+import help.buddy.ai.backend.entity.User;
+import help.buddy.ai.backend.repository.UserRepository;
+import help.buddy.ai.backend.services.FileStorageService;
 import help.buddy.ai.backend.utility.Apiresponse;
 import help.buddy.ai.backend.utility.Apistatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.File;
-import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/document")
 public class FileStorageController {
-    
-    private final String PIPE = "/";
-    
-    @PostMapping("upload")
-    public ResponseEntity<Apiresponse> uploadFile(@RequestParam("file")MultipartFile file) {
-        if (file.isEmpty()) {
-            return new ResponseEntity<>(new Apiresponse(null, Apistatus.FAILED, "File Not Found"), HttpStatus.EXPECTATION_FAILED);
-        }
+
+    @Autowired
+    private FileStorageService fileStorageService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @PostMapping("/upload")
+    public ResponseEntity<Apiresponse> uploadFile(@RequestParam("file") MultipartFile file, Authentication authentication) {
         try {
-            // 2. Define the path where you want to save the file
-            String uploadDir = "public"; // Or use a relative path
-            File directory = new File(uploadDir);
-            if (!directory.exists()) {
-                directory.mkdirs();
+            // Get Current User
+            // Note: Ensure your Security Config sets the authentication principal correctly
+            String email = authentication != null ? authentication.getName() : "test@example.com"; // Fallback for testing
+            User user = userRepository.findByEmail(email);
+
+            if (user == null) {
+                return new ResponseEntity<>(new Apiresponse(null, Apistatus.FAILED, "User not found"), HttpStatus.UNAUTHORIZED);
             }
-            String absolutePath = directory.getAbsoluteFile() + PIPE +  file.getOriginalFilename();
-            // 3. Save the file to the target location
-            file.transferTo(new File(absolutePath));
 
-            return new ResponseEntity<>(new Apiresponse(null, Apistatus.SUCCESS, "File uploaded successfully" + absolutePath), HttpStatus.CREATED);
+            fileStorageService.storeFile(file, user);
 
-        } catch (IOException e) {
-            return new ResponseEntity<>(new Apiresponse(null, Apistatus.FAILED, e.getMessage()), HttpStatus.EXPECTATION_FAILED);
+            return new ResponseEntity<>(new Apiresponse(null, Apistatus.SUCCESS, "File processed and ingested for AI."), HttpStatus.CREATED);
+        } catch (Exception e) {
+            return new ResponseEntity<>(new Apiresponse(null, Apistatus.FAILED, e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        
     }
 }
